@@ -3,8 +3,9 @@ module Test.ABNFU.ABNF.ParserTest where
 
 import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal),
                                       Chars (CharsList, CharsRange),
-                                      LiteralChars (LiteralChars))
-import           ABNFU.ABNF.Parser   (literalChars)
+                                      LiteralChars (LiteralChars),
+                                      RuleName (RuleName))
+import           ABNFU.ABNF.Parser   (literalChars, ruleName)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -18,7 +19,12 @@ import           Text.Megaparsec     (parseMaybe)
 tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
     [ testProperty "unit: literalChars" unit_literalChars
+    , testProperty "unit: ruleName"     unit_ruleName
     ]
+
+unit_ruleName :: Property
+unit_ruleName = withTests 1 $ property $ do
+    parseMaybe ruleName "foo-bar42" === Just (RuleName "foo-bar42")
 
 unit_literalChars :: Property
 unit_literalChars = withTests 1 $ property $ do
