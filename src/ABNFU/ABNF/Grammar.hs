@@ -99,22 +99,24 @@ newtype RuleName = RuleName (CI Text)
 -- | Numeric representation of terminal character(s) (RFC-5234 2.3, 3.4).
 data LiteralChars
     = LiteralChars !Base !Chars
-    deriving (Show)
+    deriving (Eq, Show)
 
 -- | Specification of characters.
 data Chars
     -- | Period-separated list of single character (RFC-5234 2.3).
+    --
+    --   These are concatenated characters.
     = CharsList !(NonEmpty Integer)
     -- | Inclusive range of characters (RFC-5234 3.4).
     | CharsRange !Integer !Integer
-    deriving (Show)
+    deriving (Eq, Show)
 
 -- | Base in which a numeric character is expressed (RFC-5234 2.3).
 data Base
     = Binary
     | Decimal
     | Hexadecimal
-    deriving (Show)
+    deriving (Eq, Show)
 
 -- | Literal string (RFC-5234 2.3).
 data LiteralString = LiteralString !(Maybe CaseSensitivity) !Text

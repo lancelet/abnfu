@@ -7,7 +7,10 @@ Parses ABNF grammars according to the rules of:
   - RFC-7405: Case-Sensitive String Support in ABNF
 -}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-module ABNFU.ABNF.Parser where
+module ABNFU.ABNF.Parser
+    ( -- * Functions
+      literalChars
+    ) where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Base (Binary, Decimal, Hexadecimal),
