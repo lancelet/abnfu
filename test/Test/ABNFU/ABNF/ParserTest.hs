@@ -5,8 +5,10 @@ import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivi
                                       Chars (CharsList, CharsRange),
                                       LiteralChars (LiteralChars),
                                       LiteralString (LiteralString),
+                                      Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                       RuleName (RuleName))
-import           ABNFU.ABNF.Parser   (literalChars, literalString, ruleName)
+import           ABNFU.ABNF.Parser   (literalChars, literalString, repeats,
+                                      ruleName)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -22,6 +24,7 @@ tests = testGroup "ABNFU.ABNF.Grammar"
     [ testProperty "unit: literalChars"  unit_literalChars
     , testProperty "unit: ruleName"      unit_ruleName
     , testProperty "unit: literalString" unit_literalString
+    , testProperty "unit: repeats"       unit_repeats
     ]
 
 
@@ -80,3 +83,11 @@ unit_literalString = withTests 1 $ property $ do
 
     let csHello = LiteralString (Just CaseSensitive) "hello"
     parseMaybe literalString "%s\"hello\"" === Just csHello
+
+
+unit_repeats :: Property
+unit_repeats = withTests 1 $ property $ do
+    parseMaybe repeats "5" === Just (RepeatsExactly 5)
+    parseMaybe repeats "3*" === Just (RepeatsAtLeast 3)
+    parseMaybe repeats "*5" === Just (RepeatsAtMost 5)
+    parseMaybe repeats "3*5" === Just (RepeatsBetween 3 5)

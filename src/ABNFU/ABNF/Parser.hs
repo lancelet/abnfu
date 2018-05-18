@@ -13,28 +13,31 @@ module ABNFU.ABNF.Parser
       ruleName
     , literalChars
     , literalString
+    , repeats
     ) where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Base (Binary, Decimal, Hexadecimal),
                                             CaseSensitivity (CaseInsensitive, CaseSensitive),
                                             Chars (CharsList, CharsRange),
-                                            Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemParen, ElemRepeat, ElemString),
+                                            Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
                                             LiteralChars (LiteralChars),
                                             LiteralString (LiteralString),
-                                            Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly, RepeatsOptional),
+                                            Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (sepBy1, optional)
+import           Control.Monad.Combinators (optional, sepBy1)
 import qualified Data.CaseInsensitive      as CI
-import           Data.Char                 (isAsciiLower, isDigit, isHexDigit, ord)
+import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
+                                            ord)
 import           Data.List.NonEmpty        (NonEmpty)
 import qualified Data.List.NonEmpty        as NE
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Void                 (Void)
 import           Numeric                   (readDec, readHex, readInt)
-import           Text.Megaparsec           (Parsec, takeWhile1P, try, (<|>), takeWhileP)
+import           Text.Megaparsec           (Parsec, takeWhile1P, takeWhileP,
+                                            try, (<|>))
 import           Text.Megaparsec.Char      (char, char', satisfy, string')
 
 
@@ -58,7 +61,7 @@ ruleName =
 
     isNameChar :: Char -> Bool
     isNameChar c = isAsciiAlpha c || isDigit c || c == '-'
-    
+
 
 literalChars :: Parser LiteralChars
 literalChars = do
@@ -66,7 +69,7 @@ literalChars = do
     b <- base
     cs <- case b of
         Binary      -> chars binVal
-        Decimal     -> chars decVal
+        Decimal     -> chars integer
         Hexadecimal -> chars hexVal
     pure (LiteralChars b cs)
 
@@ -92,9 +95,6 @@ literalChars = do
                 _   -> error "unexpected binary character"
         txt <- takeWhile1P Nothing isBinDigit
         runUniqueReadS (readInt 2 (const True) toInt) txt
-
-    decVal :: Parser Integer
-    decVal = takeWhile1P Nothing isDigit >>= runUniqueReadS readDec
 
     hexVal :: Parser Integer
     hexVal = takeWhile1P Nothing isUpperCaseHex >>= runUniqueReadS readHex
@@ -124,6 +124,19 @@ literalString = LiteralString <$> caseSensitivity <*> quotedString
             c' = ord c
         in
             (c' == 32) || (c' == 33) || (c' >= 35 && c' <= 126)
+
+
+repeats :: Parser Repeats
+repeats =
+        try (RepeatsBetween <$> (integer <* char '*') <*> integer)
+    <|> try (RepeatsAtLeast <$> (integer <* char '*'))
+    <|> try (RepeatsAtMost  <$> (char '*' *> integer))
+    <|> try (RepeatsExactly <$> integer)
+
+
+-- | Parses a decimal integer.
+integer :: Parser Integer
+integer = takeWhile1P Nothing isDigit >>= runUniqueReadS readDec
 
 
 -- | Runs a 'ReadS' parser on a given piece of 'Text', and fails if there is

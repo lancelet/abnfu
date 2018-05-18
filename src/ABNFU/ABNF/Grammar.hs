@@ -73,6 +73,10 @@ data Elem
     --
     --   > (a b)
     | ElemParen !Elem
+    -- | Optional elements (RFC-5234 3.8).
+    --
+    --   > [foo bar]
+    | ElemOptional !Elem
 
 -- | Name of a rule (RFC-5234 2.1).
 newtype RuleName
@@ -114,7 +118,7 @@ data CaseSensitivity
 
 -- | Specifies how repeats of an element occur (RFC-5234 3.6, 3.7 and 3.8).
 --
---   This covers both @<a>*<b>element@ notation and optional @[a]@ notation.
+--   This covers @<a>*<b>element@ notation.
 data Repeats
     -- | Specifies exactly how many times an element should repeat.
     --
@@ -132,7 +136,4 @@ data Repeats
     --
     --   > 3*5e
     | RepeatsBetween !Integer !Integer
-    -- | Specifies that an element is optional.
-    --
-    --   > [e]
-    | RepeatsOptional
+    deriving (Eq, Show)
