@@ -1,10 +1,10 @@
 name:                abnfu
 version:             0.1.0.0
-github:              "githubuser/abnfu"
+github:              "lancelet/abnfu"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2018 Author name here"
+author:              "Jonathan Merritt"
+maintainer:          "j.s.merritt@gmail.com"
+copyright:           "2018 Jonathan Merritt"
 
 extra-source-files:
 - README.md
@@ -21,6 +21,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- case-insensitive
+- megaparsec
+- text
 
 library:
   source-dirs: src
