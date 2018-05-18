@@ -8,8 +8,6 @@ The types in this module describe the components of an ABNF grammar
 module ABNFU.ABNF.Grammar
     ( -- * Types
       ABNFGrammar(..)
-    , Line(..)
-    , Comment(..)
     , Rule(..)
     , Elem(..)
     , RuleName(..)
@@ -26,24 +24,7 @@ import           Data.List.NonEmpty   (NonEmpty)
 import           Data.Text            (Text)
 
 -- | Parsed contents of an ABNF grammar.
-newtype ABNFGrammar = ABNFGrammar [Line]
-
--- | Line in an ABNF file.
-data Line
-    -- | Blank line (or only whitespace).
-    = LineBlank
-    -- | Line containing a rule followed by an optional comment.
-    | LineRule !Rule !(Maybe Comment)
-    -- | Line containing only a comment.
-    | LineComment !Comment
-
--- | Comment (RFC-5234 3.9).
---
---   > ; this is a comment
---
---   The comment contained here does *not* include the leading semicolon, but
---   it does contain the remainder of the line.
-newtype Comment = Comment Text
+newtype ABNFGrammar = ABNFGrammar [Rule]
 
 -- | ABNF rule.
 data Rule
