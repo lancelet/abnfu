@@ -22,10 +22,24 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - case-insensitive
+- hedgehog
 - megaparsec
 - parser-combinators
 - semigroups
+- tasty
+- tasty-hedgehog
 - text
+
+ghc-options:
+  - -Wall
+  - -Wincomplete-uni-patterns
+  - -Wincomplete-record-updates
+  - -Wmissing-import-lists
+
+_exe-ghc-options: &exe-ghc-options
+  - -threaded
+  - -rtsopts
+  - -with-rtsopts=-N
 
 library:
   source-dirs: src
@@ -34,10 +48,7 @@ executables:
   abnfu-exe:
     main:                Main.hs
     source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+    ghc-options:         *exe-ghc-options
     dependencies:
     - abnfu
 
@@ -45,9 +56,6 @@ tests:
   abnfu-test:
     main:                Spec.hs
     source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+    ghc-options:         *exe-ghc-options
     dependencies:
     - abnfu

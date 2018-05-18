@@ -1,5 +1,12 @@
 {-|
+Module      : ABNFU.ABNF.Parser
+Description : Megaparsec parser for ABNF grammars.
+
+Parses ABNF grammars according to the rules of:
+  - RFC-5234: Augmented BNF for Syntax Specifications: ABNF
+  - RFC-7405: Case-Sensitive String Support in ABNF
 -}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
@@ -31,13 +38,13 @@ type Parser = Parsec Void Text
 
 literalChars :: Parser LiteralChars
 literalChars = do
-    char '%'
+    _ <- char '%'
     b <- base
-    chars <- case b of
+    cs <- case b of
         Binary      -> chars binVal
         Decimal     -> chars decVal
         Hexadecimal -> chars hexVal
-    pure (LiteralChars b chars)
+    pure (LiteralChars b cs)
 
   where
 
@@ -58,6 +65,7 @@ literalChars = do
         let toInt c = case c of
                 '0' -> 0
                 '1' -> 1
+                _   -> error "unexpected binary character"
         txt <- takeWhile1P Nothing isBinDigit
         runUniqueReadS (readInt 2 (const True) toInt) txt
 
