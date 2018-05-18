@@ -13,7 +13,8 @@ module ABNFU.ABNF.Grammar
     , Rule(..)
     , Elem(..)
     , RuleName(..)
-    , LiteralChar(..)
+    , LiteralChars(..)
+    , Chars(..)
     , Base(..)
     , LiteralString(..)
     , CaseSensitivity(..)
@@ -21,6 +22,7 @@ module ABNFU.ABNF.Grammar
     ) where
 
 import           Data.CaseInsensitive (CI)
+import           Data.List.NonEmpty   (NonEmpty)
 import           Data.Text            (Text)
 
 -- | Parsed contents of an ABNF grammar.
@@ -28,7 +30,7 @@ newtype ABNFGrammar = ABNFGrammar [Line]
 
 -- | Line in an ABNF file.
 data Line
-    -- | Blank line.
+    -- | Blank line (or only whitespace).
     = LineBlank
     -- | Line containing a rule followed by an optional comment.
     | LineRule !Rule !(Maybe Comment)
@@ -38,6 +40,9 @@ data Line
 -- | Comment (RFC-5234 3.9).
 --
 --   > ; this is a comment
+--
+--   The comment contained here does *not* include the leading semicolon, but
+--   it does contain the remainder of the line.
 newtype Comment = Comment Text
 
 -- | ABNF rule.
@@ -49,7 +54,7 @@ data Rule
     -- | Incremental alternatives for a rule (RFC-5234 3.3).
     --
     --   > oldrule =/ additional-alternatives
-    | RuleIncrementalAlternative !RuleName !Elem
+    | RuleIncremental !RuleName !Elem
 
 -- | Expression language of rule elements.
 data Elem
@@ -59,8 +64,9 @@ data Elem
     = ElemNamedRule !RuleName
     -- | A character literal (RFC-5234 2.3).
     --
-    --   > %x61 ; a
-    | ElemChar !LiteralChar
+    --   > %x61     ; 'a' (single character)
+    --   > %d13.10  ; multiple characters, separated by periods
+    | ElemChars !LiteralChars
     -- | A string literal (RFC-5234 2.3 and RFC-7405).
     --
     --   > "command string"    ; case-insensitive string (RFC-5234)
@@ -90,14 +96,25 @@ data Elem
 -- | Name of a rule (RFC-5234 2.1).
 newtype RuleName = RuleName (CI Text)
 
--- | Numeric representation of a single terminal character (RFC-5234 2.3).
-data LiteralChar = LiteralChar !Base !Integer
+-- | Numeric representation of terminal character(s) (RFC-5234 2.3, 3.4).
+data LiteralChars
+    = LiteralChars !Base !Chars
+    deriving (Show)
+
+-- | Specification of characters.
+data Chars
+    -- | Period-separated list of single character (RFC-5234 2.3).
+    = CharsList !(NonEmpty Integer)
+    -- | Inclusive range of characters (RFC-5234 3.4).
+    | CharsRange !Integer !Integer
+    deriving (Show)
 
 -- | Base in which a numeric character is expressed (RFC-5234 2.3).
 data Base
     = Binary
     | Decimal
     | Hexadecimal
+    deriving (Show)
 
 -- | Literal string (RFC-5234 2.3).
 data LiteralString = LiteralString !(Maybe CaseSensitivity) !Text
