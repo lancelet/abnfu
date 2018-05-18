@@ -6,11 +6,13 @@ Parses ABNF grammars according to the rules of:
   - RFC-5234: Augmented BNF for Syntax Specifications: ABNF
   - RFC-7405: Case-Sensitive String Support in ABNF
 -}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser
     ( -- * Functions
-      literalChars
-    , ruleName
+      ruleName
+    , literalChars
+    , literalString
     ) where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
@@ -25,7 +27,7 @@ import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly, RepeatsOptional),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (sepBy1)
+import           Control.Monad.Combinators (sepBy1, optional)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit, ord)
 import           Data.List.NonEmpty        (NonEmpty)
@@ -35,7 +37,7 @@ import qualified Data.Text                 as T
 import           Data.Void                 (Void)
 import           Numeric                   (readDec, readHex, readInt)
 import           Text.Megaparsec           (Parsec, takeWhile1P, try, (<|>), takeWhileP)
-import           Text.Megaparsec.Char      (char, char', satisfy)
+import           Text.Megaparsec.Char      (char, char', satisfy, string')
 
 
 type Parser = Parsec Void Text
@@ -101,6 +103,29 @@ literalChars = do
 
     isUpperCaseHex :: Char -> Bool
     isUpperCaseHex c = isHexDigit c && (not $ isAsciiLower c)
+
+
+literalString :: Parser LiteralString
+literalString = LiteralString <$> caseSensitivity <*> quotedString
+
+  where
+
+    caseSensitivity :: Parser (Maybe CaseSensitivity)
+    caseSensitivity =
+        optional
+        (    (string' "%i" *> pure CaseInsensitive)
+         <|> (string' "%s" *> pure CaseSensitive)
+        )
+
+    quotedString :: Parser Text
+    quotedString = char '"' *> takeWhileP Nothing isStringContent <* char '"'
+
+    isStringContent :: Char -> Bool
+    isStringContent c =
+        let
+            c' = ord c
+        in
+            (c' == 32) || (c' == 33) || (c' >= 35 && c' <= 126)
 
 
 -- | Runs a 'ReadS' parser on a given piece of 'Text', and fails if there is

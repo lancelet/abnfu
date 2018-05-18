@@ -121,12 +121,15 @@ data Base
     deriving (Eq, Show)
 
 -- | Literal string (RFC-5234 2.3).
-data LiteralString = LiteralString !(Maybe CaseSensitivity) !Text
+data LiteralString
+    = LiteralString !(Maybe CaseSensitivity) !Text
+    deriving (Eq, Show)
 
 -- | Case sensitivity of a literal string (RFC-7405).
 data CaseSensitivity
     = CaseSensitive
     | CaseInsensitive
+    deriving (Eq, Show)
 
 -- | Specifies how repeats of an element occur (RFC-5234 3.6, 3.7 and 3.8).
 --

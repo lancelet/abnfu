@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.ABNFU.ABNF.ParserTest where
 
-import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal),
+import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivity (CaseInsensitive, CaseSensitive),
                                       Chars (CharsList, CharsRange),
                                       LiteralChars (LiteralChars),
+                                      LiteralString (LiteralString),
                                       RuleName (RuleName))
-import           ABNFU.ABNF.Parser   (literalChars, ruleName)
+import           ABNFU.ABNF.Parser   (literalChars, literalString, ruleName)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -18,13 +19,16 @@ import           Text.Megaparsec     (parseMaybe)
 
 tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
-    [ testProperty "unit: literalChars" unit_literalChars
-    , testProperty "unit: ruleName"     unit_ruleName
+    [ testProperty "unit: literalChars"  unit_literalChars
+    , testProperty "unit: ruleName"      unit_ruleName
+    , testProperty "unit: literalString" unit_literalString
     ]
+
 
 unit_ruleName :: Property
 unit_ruleName = withTests 1 $ property $ do
     parseMaybe ruleName "foo-bar42" === Just (RuleName "foo-bar42")
+
 
 unit_literalChars :: Property
 unit_literalChars = withTests 1 $ property $ do
@@ -60,3 +64,19 @@ unit_literalChars = withTests 1 $ property $ do
     let x207e = LiteralChars Hexadecimal (CharsRange 32 126)
     parseMaybe literalChars "%x0D.0A" === Just x0d0a
     parseMaybe literalChars "%x20-7E" === Just x207e
+
+
+unit_literalString :: Property
+unit_literalString = withTests 1 $ property $ do
+
+    let hello = LiteralString Nothing "hello"
+    parseMaybe literalString "\"hello\"" === Just hello
+
+    let empty = LiteralString Nothing ""
+    parseMaybe literalString "\"\"" === Just empty
+
+    let ciHello = LiteralString (Just CaseInsensitive) "hello"
+    parseMaybe literalString "%i\"hello\"" === Just ciHello
+
+    let csHello = LiteralString (Just CaseSensitive) "hello"
+    parseMaybe literalString "%s\"hello\"" === Just csHello
