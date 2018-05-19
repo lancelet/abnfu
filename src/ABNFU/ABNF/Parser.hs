@@ -10,7 +10,8 @@ Parses ABNF grammars according to the rules of:
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser
     ( -- * Functions
-      ruleName
+      rule
+    , ruleName
     , pElem
     , literalChars
     , literalString
@@ -20,15 +21,17 @@ module ABNFU.ABNF.Parser
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Base (Binary, Decimal, Hexadecimal),
+                                            Block (BlockLineComment, BlockRule),
                                             CaseSensitivity (CaseInsensitive, CaseSensitive),
                                             Chars (CharsList, CharsRange),
+                                            Comment (Comment),
                                             Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
                                             LiteralChars (LiteralChars),
                                             LiteralString (LiteralString),
                                             Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (optional, sepBy1, many)
+import           Control.Monad.Combinators (many, optional, sepBy1)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
                                             ord)
@@ -40,10 +43,24 @@ import           Data.Void                 (Void)
 import           Numeric                   (readDec, readHex, readInt)
 import           Text.Megaparsec           (Parsec, takeWhile1P, takeWhileP,
                                             try, (<|>))
-import           Text.Megaparsec.Char      (char, char', satisfy, string')
+import           Text.Megaparsec.Char      (char, char', satisfy, string,
+                                            string')
 
 
 type Parser = Parsec Void Text
+
+
+rule :: Parser Rule
+rule = try ruleBase <|> try ruleIncremental
+
+  where
+
+    ruleBase :: Parser Rule
+    ruleBase = RuleBase <$> (ruleName <* many cwsp <* char '=' <* many cwsp) <*> pElem
+
+    ruleIncremental :: Parser Rule
+    ruleIncremental = RuleIncremental <$> (ruleName <* many cwsp <* string "/=" <* many cwsp) <*> pElem
+
 
 
 ruleName :: Parser RuleName
@@ -203,8 +220,8 @@ repeats =
     <|> try (RepeatsExactly <$> integer)
 
 
-comment :: Parser Text
-comment = char ';' *> takeWhileP Nothing isVCharOrWS <* nlChars
+comment :: Parser Comment
+comment = char ';' *> (Comment <$> takeWhileP Nothing isVCharOrWS) <* nlChars
   where
     isVCharOrWS :: Char -> Bool
     isVCharOrWS c =
@@ -212,7 +229,7 @@ comment = char ';' *> takeWhileP Nothing isVCharOrWS <* nlChars
             c' = ord c
         in
             (c == ' ') || (c == '\t') || (c' >= 33 && c' <= 126)
-    
+
 
 -- | Parses a decimal integer.
 integer :: Parser Integer

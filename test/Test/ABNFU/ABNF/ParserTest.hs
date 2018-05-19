@@ -3,13 +3,15 @@ module Test.ABNFU.ABNF.ParserTest where
 
 import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivity (CaseInsensitive, CaseSensitive),
                                       Chars (CharsList, CharsRange),
+                                      Comment (Comment),
                                       Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
                                       LiteralChars (LiteralChars),
                                       LiteralString (LiteralString),
                                       Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
+                                      Rule (RuleBase, RuleIncremental),
                                       RuleName (RuleName))
-import           ABNFU.ABNF.Parser   (literalChars, literalString, repeats,
-                                      ruleName, pElem, comment)
+import           ABNFU.ABNF.Parser   (comment, literalChars, literalString,
+                                      pElem, repeats, rule, ruleName)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -22,13 +24,29 @@ import           Text.Megaparsec     (parseMaybe)
 
 tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
-    [ testProperty "unit: literalChars"  unit_literalChars
+    [ testProperty "unit: rule"          unit_rule
+    , testProperty "unit: literalChars"  unit_literalChars
     , testProperty "unit: ruleName"      unit_ruleName
     , testProperty "unit: pElem"         unit_pElem
     , testProperty "unit: literalString" unit_literalString
     , testProperty "unit: repeats"       unit_repeats
     , testProperty "unit: comment"       unit_comment
     ]
+
+
+unit_rule :: Property
+unit_rule = withTests 1 $ property $ do
+
+    let e1 = ElemString (LiteralString Nothing "hello")
+    let e2 = ElemOptional e1
+    let e3 = ElemChars (LiteralChars Hexadecimal (CharsRange 48 57))
+    let e4 = ElemConcat e2 e3
+
+    let r1 = RuleBase (RuleName "rule-name") e4
+    parseMaybe rule "rule-name   =   [\"hello\"] %x30-39 " === Just r1
+
+    let r2 = RuleIncremental (RuleName "rule-name") e4
+    parseMaybe rule "rule-name/=[\"hello\"]%x30-39" === Just r2
 
 
 unit_ruleName :: Property
@@ -127,5 +145,5 @@ unit_repeats = withTests 1 $ property $ do
 
 unit_comment :: Property
 unit_comment = withTests 1 $ property $ do
-    parseMaybe comment ";\n" === Just ""
-    parseMaybe comment "; foo bar\t  \n" === Just " foo bar\t  "
+    parseMaybe comment ";\n" === Just (Comment "")
+    parseMaybe comment "; foo bar\t  \n" === Just (Comment " foo bar\t  ")

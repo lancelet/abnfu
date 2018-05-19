@@ -8,6 +8,8 @@ The types in this module describe the components of an ABNF grammar
 module ABNFU.ABNF.Grammar
     ( -- * Types
       ABNFGrammar(..)
+    , Block(..)
+    , Comment(..)
     , Rule(..)
     , Elem(..)
     , RuleName(..)
@@ -23,9 +25,26 @@ import           Data.CaseInsensitive (CI)
 import           Data.List.NonEmpty   (NonEmpty)
 import           Data.Text            (Text)
 
--- | Parsed contents of an ABNF grammar.
-newtype ABNFGrammar = ABNFGrammar [Rule]
 
+-- | Parsed contents of an ABNF grammar.
+newtype ABNFGrammar = ABNFGrammar [Block]
+
+
+data Block
+    -- | Isolated comment on a line by itself.
+    --
+    --   Comments that appear elsewhere are discarded for now.
+    = BlockLineComment !Comment
+    -- | Rule.
+    | BlockRule !Rule
+    deriving (Eq, Show)
+    
+
+newtype Comment
+    = Comment Text
+    deriving (Eq, Show)
+
+    
 -- | ABNF rule.
 data Rule
     -- | Base rule (RFC-5234 2.2).
@@ -36,6 +55,7 @@ data Rule
     --
     --   > oldrule =/ additional-alternatives
     | RuleIncremental !RuleName !Elem
+    deriving (Eq, Show)
 
 -- | Expression language of rule elements.
 data Elem
