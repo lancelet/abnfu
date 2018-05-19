@@ -57,6 +57,12 @@ unit_pElem = withTests 1 $ property $ do
     let e6 = ElemConcat e5 e1
     parseMaybe pElem "[\"hello\"] \n rule-name" === Just e6
 
+    let e7 = ElemAlternative e6 e4
+    parseMaybe pElem "[\"hello\"] rule-name / 3*5rule-name" === Just e7
+
+    let e8 = ElemAlternative (ElemParen e6) e4
+    parseMaybe pElem "( [\"hello\"] rule-name ) / 3*5rule-name" === Just e8
+
 
 unit_literalChars :: Property
 unit_literalChars = withTests 1 $ property $ do

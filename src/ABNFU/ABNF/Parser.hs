@@ -65,15 +65,46 @@ ruleName =
 
 
 pElem :: Parser Elem
-pElem =
-        (ElemConcat <$> pElem <*> pElem)
-    <|> (ElemNamedRule <$> ruleName <* (many cwsp))
-    <|> (ElemChars <$> literalChars <* (many cwsp))
-    <|> (ElemString <$> literalString <* (many cwsp))
-    <|> (ElemRepeat <$> repeats <*> pElem)
-    <|> (ElemParen <$> (char '(' *> (many cwsp) *> pElem <* char ')' <* (many cwsp)))
-    <|> (ElemOptional <$> (char '[' *> (many cwsp) *> pElem <* char ']' <* (many cwsp)))
-    <|> (ElemAlternative <$> (pElem <* char '/') <*> pElem)
+pElem = alternation <* many cwsp
+
+  where
+
+    alternation :: Parser Elem
+    alternation =
+            try (ElemAlternative <$> (concatenation <* many cwsp <* char '/' <* many cwsp) <*> concatenation)
+        <|> concatenation
+
+    concatenation :: Parser Elem
+    concatenation =
+            try (ElemConcat <$> (repetition <* many cwsp) <*> repetition)
+        <|> repetition
+
+    repetition :: Parser Elem
+    repetition =
+            try (ElemRepeat <$> repeats <*> element)
+        <|> element
+
+    element :: Parser Elem
+    element =
+            terminal
+        <|> group
+        <|> option
+
+    group :: Parser Elem
+    group = bracketed '(' ')' (ElemParen <$> alternation)
+
+    option :: Parser Elem
+    option = bracketed '[' ']' (ElemOptional <$> alternation)
+
+    terminal :: Parser Elem
+    terminal =
+            (ElemChars <$> literalChars <* many cwsp)
+        <|> (ElemString <$> literalString <* many cwsp)
+        <|> (ElemNamedRule <$> ruleName <* many cwsp)
+
+    bracketed :: Char -> Char -> Parser a -> Parser a
+    bracketed c1 c2 p =
+        char c1 *> many cwsp *> p <* many cwsp <* char c2 <* many cwsp
 
 
 cwsp :: Parser ()
