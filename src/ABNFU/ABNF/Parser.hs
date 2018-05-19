@@ -15,6 +15,7 @@ module ABNFU.ABNF.Parser
     , literalChars
     , literalString
     , repeats
+    , comment
     ) where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
@@ -107,18 +108,26 @@ pElem = alternation <* many cwsp
         char c1 *> many cwsp *> p <* many cwsp <* char c2 <* many cwsp
 
 
+-- | Whitespace, or a newline and then more whitespace.
 cwsp :: Parser ()
 cwsp =
     (wsp <|> (cnl *> wsp))
     *> pure ()
 
 
+-- | Comment or one or more characters of a newline.
 cnl :: Parser ()
-cnl = takeWhile1P Nothing isNL *> pure ()
+cnl = (comment *> pure ()) <|> nlChars
+
+
+-- | One or more characters of a newline.
+nlChars :: Parser ()
+nlChars = takeWhile1P Nothing isNL *> pure ()
   where
     isNL c = (c == '\n') || (c == '\r')
 
 
+-- | Single character of whitespace.
 wsp :: Parser ()
 wsp = (char ' ' <|> char '\t') *> pure ()
 
@@ -193,6 +202,17 @@ repeats =
     <|> try (RepeatsAtMost  <$> (char '*' *> integer))
     <|> try (RepeatsExactly <$> integer)
 
+
+comment :: Parser Text
+comment = char ';' *> takeWhileP Nothing isVCharOrWS <* nlChars
+  where
+    isVCharOrWS :: Char -> Bool
+    isVCharOrWS c =
+        let
+            c' = ord c
+        in
+            (c == ' ') || (c == '\t') || (c' >= 33 && c' <= 126)
+    
 
 -- | Parses a decimal integer.
 integer :: Parser Integer

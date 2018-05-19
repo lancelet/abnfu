@@ -9,7 +9,7 @@ import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivi
                                       Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                       RuleName (RuleName))
 import           ABNFU.ABNF.Parser   (literalChars, literalString, repeats,
-                                      ruleName, pElem)
+                                      ruleName, pElem, comment)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -27,6 +27,7 @@ tests = testGroup "ABNFU.ABNF.Grammar"
     , testProperty "unit: pElem"         unit_pElem
     , testProperty "unit: literalString" unit_literalString
     , testProperty "unit: repeats"       unit_repeats
+    , testProperty "unit: comment"       unit_comment
     ]
 
 
@@ -122,3 +123,9 @@ unit_repeats = withTests 1 $ property $ do
     parseMaybe repeats "3*" === Just (RepeatsAtLeast 3)
     parseMaybe repeats "*5" === Just (RepeatsAtMost 5)
     parseMaybe repeats "3*5" === Just (RepeatsBetween 3 5)
+
+
+unit_comment :: Property
+unit_comment = withTests 1 $ property $ do
+    parseMaybe comment ";\n" === Just ""
+    parseMaybe comment "; foo bar\t  \n" === Just " foo bar\t  "
