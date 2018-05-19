@@ -3,12 +3,13 @@ module Test.ABNFU.ABNF.ParserTest where
 
 import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivity (CaseInsensitive, CaseSensitive),
                                       Chars (CharsList, CharsRange),
+                                      Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
                                       LiteralChars (LiteralChars),
                                       LiteralString (LiteralString),
                                       Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                       RuleName (RuleName))
 import           ABNFU.ABNF.Parser   (literalChars, literalString, repeats,
-                                      ruleName)
+                                      ruleName, pElem)
 
 import qualified Data.List.NonEmpty  as NE
 
@@ -23,6 +24,7 @@ tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
     [ testProperty "unit: literalChars"  unit_literalChars
     , testProperty "unit: ruleName"      unit_ruleName
+    , testProperty "unit: pElem"         unit_pElem
     , testProperty "unit: literalString" unit_literalString
     , testProperty "unit: repeats"       unit_repeats
     ]
@@ -31,6 +33,29 @@ tests = testGroup "ABNFU.ABNF.Grammar"
 unit_ruleName :: Property
 unit_ruleName = withTests 1 $ property $ do
     parseMaybe ruleName "foo-bar42" === Just (RuleName "foo-bar42")
+
+
+unit_pElem :: Property
+unit_pElem = withTests 1 $ property $ do
+
+    let e1 = ElemNamedRule (RuleName "rule-name")
+    parseMaybe pElem "rule-name" === Just e1
+
+    let c1 = LiteralChars Hexadecimal (CharsRange 48 57)
+    let e2 = ElemChars c1
+    parseMaybe pElem "%x30-39  \n " === Just e2
+
+    let e3 = ElemString (LiteralString Nothing "hello")
+    parseMaybe pElem "\"hello\" " === Just e3
+
+    let e4 = ElemRepeat (RepeatsBetween 3 5) e1
+    parseMaybe pElem "3*5rule-name  \n  \n " === Just e4
+
+    let e5 = ElemOptional e3
+    parseMaybe pElem "[ \"hello\" ] " === Just e5
+
+    let e6 = ElemConcat e5 e1
+    parseMaybe pElem "[\"hello\"] \n rule-name" === Just e6
 
 
 unit_literalChars :: Property

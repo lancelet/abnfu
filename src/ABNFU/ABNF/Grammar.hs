@@ -77,6 +77,7 @@ data Elem
     --
     --   > [foo bar]
     | ElemOptional !Elem
+    deriving (Eq, Show)
 
 -- | Name of a rule (RFC-5234 2.1).
 newtype RuleName

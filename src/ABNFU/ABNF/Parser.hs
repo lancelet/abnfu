@@ -11,6 +11,7 @@ Parses ABNF grammars according to the rules of:
 module ABNFU.ABNF.Parser
     ( -- * Functions
       ruleName
+    , pElem
     , literalChars
     , literalString
     , repeats
@@ -26,7 +27,7 @@ import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (optional, sepBy1)
+import           Control.Monad.Combinators (optional, sepBy1, many)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
                                             ord)
@@ -61,6 +62,34 @@ ruleName =
 
     isNameChar :: Char -> Bool
     isNameChar c = isAsciiAlpha c || isDigit c || c == '-'
+
+
+pElem :: Parser Elem
+pElem =
+        (ElemConcat <$> pElem <*> pElem)
+    <|> (ElemNamedRule <$> ruleName <* (many cwsp))
+    <|> (ElemChars <$> literalChars <* (many cwsp))
+    <|> (ElemString <$> literalString <* (many cwsp))
+    <|> (ElemRepeat <$> repeats <*> pElem)
+    <|> (ElemParen <$> (char '(' *> (many cwsp) *> pElem <* char ')' <* (many cwsp)))
+    <|> (ElemOptional <$> (char '[' *> (many cwsp) *> pElem <* char ']' <* (many cwsp)))
+    <|> (ElemAlternative <$> (pElem <* char '/') <*> pElem)
+
+
+cwsp :: Parser ()
+cwsp =
+    (wsp <|> (cnl *> wsp))
+    *> pure ()
+
+
+cnl :: Parser ()
+cnl = takeWhile1P Nothing isNL *> pure ()
+  where
+    isNL c = (c == '\n') || (c == '\r')
+
+
+wsp :: Parser ()
+wsp = (char ' ' <|> char '\t') *> pure ()
 
 
 literalChars :: Parser LiteralChars
