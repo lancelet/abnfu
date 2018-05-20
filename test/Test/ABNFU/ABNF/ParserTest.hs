@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.ABNFU.ABNF.ParserTest where
 
-import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal),
-                                      Block (BlockLineComment, BlockRule),
+import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), Block (BlockLineComment, BlockRule),
                                       CaseSensitivity (CaseInsensitive, CaseSensitive),
                                       Chars (CharsList, CharsRange),
                                       Comment (Comment),
@@ -49,22 +48,18 @@ unit_block = withTests 1 $ property $ do
     let r1 = RuleBase (RuleName "rule-name") e4
 
     let b1 = BlockRule r1
-    -- let i1 = "rule-name = [\"hello\"] %x30-39"
     let i1 = T.unlines
              [ "rule-name ="
-             , "  [\"hello\"]"
-             , "  %x30-39"
-             ]
-    {-
-    let i1 = T.unlines
-             [
-               "rule-name ="
              , "  [\"hello\"]  ; literal string hello"
              , "  %x30-39      ; character range"
-             , " "
+             , ""
              ]
-    -}
-    parseMaybe block i1 === Just b1
+    parseMaybe block i1 === Just (Right b1)
+
+    let b2 = BlockLineComment (Comment " this is a comment")
+    parseMaybe block "  ; this is a comment\n" === Just (Right b2)
+
+    parseMaybe block "  \n" === Just (Left ())
 
 
 unit_rule :: Property

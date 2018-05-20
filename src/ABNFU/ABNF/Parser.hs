@@ -10,7 +10,8 @@ Parses ABNF grammars according to the rules of:
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser
     ( -- * Functions
-      block
+      abnf
+    , block
     , rule
     , ruleName
     , pElem
@@ -34,10 +35,11 @@ import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (many, some, optional, sepBy1)
+import           Control.Monad.Combinators (many, optional, sepBy1, some)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
                                             ord)
+import           Data.Either               (rights)
 import           Data.List.NonEmpty        (NonEmpty)
 import qualified Data.List.NonEmpty        as NE
 import           Data.Text                 (Text)
@@ -53,10 +55,15 @@ import           Text.Megaparsec.Char      (char, char', satisfy, string,
 type Parser = Parsec Void Text
 
 
-block :: Parser Block
+abnf :: Parser [Block]
+abnf = rights <$> many block
+
+
+block :: Parser (Either () Block)
 block =
-        try (BlockLineComment <$> (many wspNL *> comment))
-    <|> (BlockRule <$> (beforerule *> rule <* many wspNL))
+        (Left <$> try (many wsp *> nlChars))
+    <|> ((Right . BlockLineComment) <$> try (many wsp *> comment))
+    <|> ((Right . BlockRule) <$> rule)
 
 
 rule :: Parser Rule
@@ -156,16 +163,6 @@ nlChars = takeWhile1P Nothing isNL *> pure ()
 -- | Single character of whitespace.
 wsp :: Parser ()
 wsp = (char ' ' <|> char '\t') *> pure ()
-
-
--- | Single character of whitespace, or multiple characters of a newline.
-wspNL :: Parser ()
-wspNL = nlChars <|> wsp
-
-
--- | The kind of whitespace which can occur before a rule.
-beforerule :: Parser ()
-beforerule = many (some wsp *> nlChars) *> pure ()
 
 
 literalChars :: Parser LiteralChars
