@@ -10,13 +10,16 @@ Parses ABNF grammars according to the rules of:
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser
     ( -- * Functions
-      rule
+      block
+    , rule
     , ruleName
     , pElem
     , literalChars
     , literalString
     , repeats
     , comment
+    , cwsp
+    , cnl
     ) where
 
 import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
@@ -31,7 +34,7 @@ import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
-import           Control.Monad.Combinators (many, optional, sepBy1)
+import           Control.Monad.Combinators (many, some, optional, sepBy1)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
                                             ord)
@@ -50,16 +53,22 @@ import           Text.Megaparsec.Char      (char, char', satisfy, string,
 type Parser = Parsec Void Text
 
 
+block :: Parser Block
+block =
+        try (BlockLineComment <$> (many wspNL *> comment))
+    <|> (BlockRule <$> (beforerule *> rule <* many wspNL))
+
+
 rule :: Parser Rule
 rule = try ruleBase <|> try ruleIncremental
 
   where
 
     ruleBase :: Parser Rule
-    ruleBase = RuleBase <$> (ruleName <* many cwsp <* char '=' <* many cwsp) <*> pElem
+    ruleBase = RuleBase <$> (ruleName <* many cwsp <* char '=' <* many cwsp) <*> pElem <* cnl
 
     ruleIncremental :: Parser Rule
-    ruleIncremental = RuleIncremental <$> (ruleName <* many cwsp <* string "/=" <* many cwsp) <*> pElem
+    ruleIncremental = RuleIncremental <$> (ruleName <* many cwsp <* string "/=" <* many cwsp) <*> pElem <* cnl
 
 
 
@@ -83,7 +92,7 @@ ruleName =
 
 
 pElem :: Parser Elem
-pElem = alternation <* many cwsp
+pElem = alternation <* many wsp  {- note: many wsp is from the erratum -}
 
   where
 
@@ -94,7 +103,7 @@ pElem = alternation <* many cwsp
 
     concatenation :: Parser Elem
     concatenation =
-            try (ElemConcat <$> (repetition <* many cwsp) <*> repetition)
+            try (ElemConcat <$> (repetition <* some cwsp) <*> repetition)
         <|> repetition
 
     repetition :: Parser Elem
@@ -116,13 +125,13 @@ pElem = alternation <* many cwsp
 
     terminal :: Parser Elem
     terminal =
-            (ElemChars <$> literalChars <* many cwsp)
-        <|> (ElemString <$> literalString <* many cwsp)
-        <|> (ElemNamedRule <$> ruleName <* many cwsp)
+            (ElemChars <$> literalChars)
+        <|> (ElemString <$> literalString)
+        <|> (ElemNamedRule <$> ruleName)
 
     bracketed :: Char -> Char -> Parser a -> Parser a
     bracketed c1 c2 p =
-        char c1 *> many cwsp *> p <* many cwsp <* char c2 <* many cwsp
+        char c1 *> many cwsp *> p <* many cwsp <* char c2
 
 
 -- | Whitespace, or a newline and then more whitespace.
@@ -147,6 +156,16 @@ nlChars = takeWhile1P Nothing isNL *> pure ()
 -- | Single character of whitespace.
 wsp :: Parser ()
 wsp = (char ' ' <|> char '\t') *> pure ()
+
+
+-- | Single character of whitespace, or multiple characters of a newline.
+wspNL :: Parser ()
+wspNL = nlChars <|> wsp
+
+
+-- | The kind of whitespace which can occur before a rule.
+beforerule :: Parser ()
+beforerule = many (some wsp *> nlChars) *> pure ()
 
 
 literalChars :: Parser LiteralChars

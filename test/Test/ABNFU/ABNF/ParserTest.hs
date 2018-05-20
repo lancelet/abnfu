@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.ABNFU.ABNF.ParserTest where
 
-import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivity (CaseInsensitive, CaseSensitive),
+import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal),
+                                      Block (BlockLineComment, BlockRule),
+                                      CaseSensitivity (CaseInsensitive, CaseSensitive),
                                       Chars (CharsList, CharsRange),
                                       Comment (Comment),
                                       Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
@@ -10,10 +12,12 @@ import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), CaseSensitivi
                                       Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                       Rule (RuleBase, RuleIncremental),
                                       RuleName (RuleName))
-import           ABNFU.ABNF.Parser   (comment, literalChars, literalString,
-                                      pElem, repeats, rule, ruleName)
+import           ABNFU.ABNF.Parser   (block, comment, literalChars,
+                                      literalString, pElem, repeats, rule,
+                                      ruleName)
 
 import qualified Data.List.NonEmpty  as NE
+import qualified Data.Text           as T
 
 import           Hedgehog            (Property, property, withTests, (===))
 import           Test.Tasty          (TestTree)
@@ -24,7 +28,8 @@ import           Text.Megaparsec     (parseMaybe)
 
 tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
-    [ testProperty "unit: rule"          unit_rule
+    [ testProperty "unit: block"         unit_block
+    , testProperty "unit: rule"          unit_rule
     , testProperty "unit: literalChars"  unit_literalChars
     , testProperty "unit: ruleName"      unit_ruleName
     , testProperty "unit: pElem"         unit_pElem
@@ -32,6 +37,34 @@ tests = testGroup "ABNFU.ABNF.Grammar"
     , testProperty "unit: repeats"       unit_repeats
     , testProperty "unit: comment"       unit_comment
     ]
+
+
+unit_block :: Property
+unit_block = withTests 1 $ property $ do
+
+    let e1 = ElemString (LiteralString Nothing "hello")
+    let e2 = ElemOptional e1
+    let e3 = ElemChars (LiteralChars Hexadecimal (CharsRange 48 57))
+    let e4 = ElemConcat e2 e3
+    let r1 = RuleBase (RuleName "rule-name") e4
+
+    let b1 = BlockRule r1
+    -- let i1 = "rule-name = [\"hello\"] %x30-39"
+    let i1 = T.unlines
+             [ "rule-name ="
+             , "  [\"hello\"]"
+             , "  %x30-39"
+             ]
+    {-
+    let i1 = T.unlines
+             [
+               "rule-name ="
+             , "  [\"hello\"]  ; literal string hello"
+             , "  %x30-39      ; character range"
+             , " "
+             ]
+    -}
+    parseMaybe block i1 === Just b1
 
 
 unit_rule :: Property
@@ -43,10 +76,10 @@ unit_rule = withTests 1 $ property $ do
     let e4 = ElemConcat e2 e3
 
     let r1 = RuleBase (RuleName "rule-name") e4
-    parseMaybe rule "rule-name   =   [\"hello\"] %x30-39 " === Just r1
+    parseMaybe rule "rule-name   =   [\"hello\"] %x30-39 \n" === Just r1
 
     let r2 = RuleIncremental (RuleName "rule-name") e4
-    parseMaybe rule "rule-name/=[\"hello\"]%x30-39" === Just r2
+    parseMaybe rule "rule-name /= [\"hello\"] %x30-39 ; comment\n" === Just r2
 
 
 unit_ruleName :: Property
@@ -62,25 +95,29 @@ unit_pElem = withTests 1 $ property $ do
 
     let c1 = LiteralChars Hexadecimal (CharsRange 48 57)
     let e2 = ElemChars c1
-    parseMaybe pElem "%x30-39  \n " === Just e2
+    parseMaybe pElem "%x30-39  " === Just e2
 
     let e3 = ElemString (LiteralString Nothing "hello")
     parseMaybe pElem "\"hello\" " === Just e3
 
     let e4 = ElemRepeat (RepeatsBetween 3 5) e1
-    parseMaybe pElem "3*5rule-name  \n  \n " === Just e4
+    parseMaybe pElem "3*5rule-name " === Just e4
 
     let e5 = ElemOptional e3
     parseMaybe pElem "[ \"hello\" ] " === Just e5
 
     let e6 = ElemConcat e5 e1
     parseMaybe pElem "[\"hello\"] \n rule-name" === Just e6
+    parseMaybe pElem "[\"hello\"]  ; comment \n rule-name" === Just e6
 
     let e7 = ElemAlternative e6 e4
     parseMaybe pElem "[\"hello\"] rule-name / 3*5rule-name" === Just e7
 
     let e8 = ElemAlternative (ElemParen e6) e4
     parseMaybe pElem "( [\"hello\"] rule-name ) / 3*5rule-name" === Just e8
+
+    let e9 = ElemConcat e3 e2
+    parseMaybe pElem "\"hello\"\n  %x30-39" === Just e9
 
 
 unit_literalChars :: Property
