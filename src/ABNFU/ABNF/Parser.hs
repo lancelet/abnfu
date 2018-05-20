@@ -32,7 +32,7 @@ import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
                                             Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
                                             LiteralChars (LiteralChars),
                                             LiteralString (LiteralString),
-                                            Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
+                                            Repeats (RepeatsAny, RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
                                             Rule (RuleBase, RuleIncremental),
                                             RuleName (RuleName))
 import           Control.Monad.Combinators (many, optional, sepBy1, some)
@@ -105,12 +105,12 @@ pElem = alternation <* many wsp  {- note: many wsp is from the erratum -}
 
     alternation :: Parser Elem
     alternation =
-            try (ElemAlternative <$> (concatenation <* many cwsp <* char '/' <* many cwsp) <*> concatenation)
+            try (ElemAlternative <$> (concatenation <* many cwsp <* char '/' <* many cwsp) <*> alternation)
         <|> concatenation
 
     concatenation :: Parser Elem
     concatenation =
-            try (ElemConcat <$> (repetition <* some cwsp) <*> repetition)
+            try (ElemConcat <$> (repetition <* some cwsp) <*> concatenation)
         <|> repetition
 
     repetition :: Parser Elem
@@ -234,6 +234,7 @@ repeats =
     <|> try (RepeatsAtLeast <$> (integer <* char '*'))
     <|> try (RepeatsAtMost  <$> (char '*' *> integer))
     <|> try (RepeatsExactly <$> integer)
+    <|> try (char '*' *> pure RepeatsAny)
 
 
 comment :: Parser Comment

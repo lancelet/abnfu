@@ -157,4 +157,8 @@ data Repeats
     --
     --   > 3*5e
     | RepeatsBetween !Integer !Integer
+    -- | Specifies any number of repeats.
+    --
+    --   > *e
+    | RepeatsAny
     deriving (Eq, Show)

@@ -1,41 +1,62 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Test.ABNFU.ABNF.ParserTest where
 
-import           ABNFU.ABNF.Grammar  (Base (Decimal, Hexadecimal), Block (BlockLineComment, BlockRule),
-                                      CaseSensitivity (CaseInsensitive, CaseSensitive),
-                                      Chars (CharsList, CharsRange),
-                                      Comment (Comment),
-                                      Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
-                                      LiteralChars (LiteralChars),
-                                      LiteralString (LiteralString),
-                                      Repeats (RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
-                                      Rule (RuleBase, RuleIncremental),
-                                      RuleName (RuleName))
-import           ABNFU.ABNF.Parser   (block, comment, literalChars,
-                                      literalString, pElem, repeats, rule,
-                                      ruleName)
+import           ABNFU.ABNF.Grammar     (Base (Decimal, Hexadecimal),
+                                         Block (BlockLineComment, BlockRule),
+                                         CaseSensitivity (CaseInsensitive, CaseSensitive),
+                                         Chars (CharsList, CharsRange),
+                                         Comment (Comment),
+                                         Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
+                                         LiteralChars (LiteralChars),
+                                         LiteralString (LiteralString),
+                                         Repeats (RepeatsAny, RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
+                                         Rule (RuleBase, RuleIncremental),
+                                         RuleName (RuleName))
+import           ABNFU.ABNF.Parser      (abnf, block, comment, literalChars,
+                                         literalString, pElem, repeats, rule,
+                                         ruleName)
 
-import qualified Data.List.NonEmpty  as NE
-import qualified Data.Text           as T
+import           Control.Monad.IO.Class (liftIO)
+import qualified Data.List.NonEmpty     as NE
+import qualified Data.Text              as T
+import qualified Data.Text.IO           as T
 
-import           Hedgehog            (Property, property, withTests, (===))
-import           Test.Tasty          (TestTree)
-import           Test.Tasty          (testGroup)
-import           Test.Tasty.Hedgehog (testProperty)
-import           Text.Megaparsec     (parseMaybe)
+import           Hedgehog               (Property, property, withTests, (===))
+import           Test.Tasty             (TestTree)
+import           Test.Tasty             (testGroup)
+import           Test.Tasty.Hedgehog    (testProperty)
+import           Text.Megaparsec        (parseMaybe)
 
 
 tests :: TestTree
 tests = testGroup "ABNFU.ABNF.Grammar"
-    [ testProperty "unit: block"         unit_block
-    , testProperty "unit: rule"          unit_rule
-    , testProperty "unit: literalChars"  unit_literalChars
-    , testProperty "unit: ruleName"      unit_ruleName
-    , testProperty "unit: pElem"         unit_pElem
-    , testProperty "unit: literalString" unit_literalString
-    , testProperty "unit: repeats"       unit_repeats
-    , testProperty "unit: comment"       unit_comment
+    [ testProperty "unit (IO): abnf core"    unit_abnfcore
+    , testProperty "unit (IO): abnf in abnf" unit_abnfabnf
+    , testProperty "unit: block"             unit_block
+    , testProperty "unit: rule"              unit_rule
+    , testProperty "unit: literalChars"      unit_literalChars
+    , testProperty "unit: ruleName"          unit_ruleName
+    , testProperty "unit: pElem"             unit_pElem
+    , testProperty "unit: literalString"     unit_literalString
+    , testProperty "unit: repeats"           unit_repeats
+    , testProperty "unit: comment"           unit_comment
     ]
+
+
+unit_abnfcore :: Property
+unit_abnfcore = withTests 1 $ property $ do
+    core <- liftIO $ T.readFile "doc/core.abnf"
+    case parseMaybe abnf core of
+        Just _  -> pure ()
+        Nothing -> fail "Could not parse core ABNF: doc/core.abnf"
+
+
+unit_abnfabnf :: Property
+unit_abnfabnf = withTests 1 $ property $ do
+    gabnf <- liftIO $ T.readFile "doc/abnf.abnf"
+    case parseMaybe abnf gabnf of
+        Just _  -> pure ()
+        Nothing -> fail "Could not parse ABNF definition: doc/abnf.abnf"
 
 
 unit_block :: Property
@@ -169,10 +190,11 @@ unit_literalString = withTests 1 $ property $ do
 
 unit_repeats :: Property
 unit_repeats = withTests 1 $ property $ do
-    parseMaybe repeats "5" === Just (RepeatsExactly 5)
-    parseMaybe repeats "3*" === Just (RepeatsAtLeast 3)
-    parseMaybe repeats "*5" === Just (RepeatsAtMost 5)
+    parseMaybe repeats "5"   === Just (RepeatsExactly 5)
+    parseMaybe repeats "3*"  === Just (RepeatsAtLeast 3)
+    parseMaybe repeats "*5"  === Just (RepeatsAtMost 5)
     parseMaybe repeats "3*5" === Just (RepeatsBetween 3 5)
+    parseMaybe repeats "*"   === Just (RepeatsAny)
 
 
 unit_comment :: Property
