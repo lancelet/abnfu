@@ -9,7 +9,6 @@ Parses ABNF grammars according to the rules of:
 All parts of ABNF except free-form prose are understood.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 module ABNFU.ABNF.Parser
     ( -- * Functions
       abnf
@@ -32,7 +31,6 @@ import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
                                             ord)
 import           Data.Either               (rights)
-import           Data.List.NonEmpty        (NonEmpty)
 import qualified Data.List.NonEmpty        as NE
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
