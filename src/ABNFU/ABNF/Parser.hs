@@ -9,9 +9,12 @@ Parses ABNF grammars according to the rules of:
 All parts of ABNF except free-form prose are understood.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK hide #-}
 module ABNFU.ABNF.Parser
-    ( -- * Functions
-      abnf
+    ( -- * Parser type
+      Parser
+      -- * Functions
+    , abnf
     , block
     , rule
     , ruleName

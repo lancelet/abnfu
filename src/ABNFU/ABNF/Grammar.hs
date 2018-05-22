@@ -6,6 +6,7 @@ The types in this module describe the components of an ABNF grammar
 "as written", corresponding to RFC-5234 and RFC-7405. All parts of ABNF are
 represented except free-form prose.
 -}
+{-# OPTIONS_HADDOCK hide #-}
 module ABNFU.ABNF.Grammar
     ( -- * Types
       ABNFGrammar(..)
@@ -40,13 +41,13 @@ data Block
     -- | Rule.
     | BlockRule !Rule
     deriving (Eq, Show)
-    
+
 
 newtype Comment
     = Comment Text
     deriving (Eq, Show)
 
-    
+
 -- | ABNF rule.
 data Rule
     -- | Base rule (RFC-5234 2.2).
