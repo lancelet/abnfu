@@ -25,18 +25,8 @@ module ABNFU.ABNF.Parser
     , cnl
     ) where
 
-import           ABNFU.ABNF.Grammar        (ABNFGrammar (ABNFGrammar),
-                                            Base (Binary, Decimal, Hexadecimal),
-                                            Block (BlockLineComment, BlockRule),
-                                            CaseSensitivity (CaseInsensitive, CaseSensitive),
-                                            Chars (CharsList, CharsRange),
-                                            Comment (Comment),
-                                            Elem (ElemAlternative, ElemChars, ElemConcat, ElemNamedRule, ElemOptional, ElemParen, ElemRepeat, ElemString),
-                                            LiteralChars (LiteralChars),
-                                            LiteralString (LiteralString),
-                                            Repeats (RepeatsAny, RepeatsAtLeast, RepeatsAtMost, RepeatsBetween, RepeatsExactly),
-                                            Rule (RuleBase, RuleIncremental),
-                                            RuleName (RuleName))
+import qualified ABNFU.ABNF.Grammar        as G
+
 import           Control.Monad.Combinators (many, optional, sepBy1, some)
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 (isAsciiLower, isDigit, isHexDigit,
@@ -58,33 +48,39 @@ type Parser = Parsec Void Text
 
 
 -- | Parses a sequence of blocks forming an ABNF grammar.
-abnf :: Parser [Block]
+abnf :: Parser [G.Block]
 abnf = rights <$> many block
 
 
-block :: Parser (Either () Block)
+block :: Parser (Either () G.Block)
 block =
         (Left <$> try (many wsp *> nlChars))
-    <|> ((Right . BlockLineComment) <$> try (many wsp *> comment))
-    <|> ((Right . BlockRule) <$> rule)
+    <|> ((Right . G.BlockLineComment) <$> try (many wsp *> comment))
+    <|> ((Right . G.BlockRule) <$> rule)
 
 
-rule :: Parser Rule
+rule :: Parser G.Rule
 rule = try ruleBase <|> try ruleIncremental
 
   where
 
-    ruleBase :: Parser Rule
-    ruleBase = RuleBase <$> (ruleName <* many cwsp <* char '=' <* many cwsp) <*> pElem <* cnl
+    ruleBase :: Parser G.Rule
+    ruleBase
+        =   G.RuleBase
+        <$> (ruleName <* many cwsp <* char '=' <* many cwsp)
+        <*> pElem <* cnl
 
-    ruleIncremental :: Parser Rule
-    ruleIncremental = RuleIncremental <$> (ruleName <* many cwsp <* string "/=" <* many cwsp) <*> pElem <* cnl
+    ruleIncremental :: Parser G.Rule
+    ruleIncremental
+        =   G.RuleIncremental
+        <$> (ruleName <* many cwsp <* string "/=" <* many cwsp)
+        <*> pElem <* cnl
 
 
 
-ruleName :: Parser RuleName
+ruleName :: Parser G.RuleName
 ruleName =
-    (RuleName . CI.mk)
+    (G.RuleName . CI.mk)
     <$> (T.cons <$> satisfy isAsciiAlpha <*> takeWhileP Nothing isNameChar)
 
   where
@@ -101,43 +97,46 @@ ruleName =
     isNameChar c = isAsciiAlpha c || isDigit c || c == '-'
 
 
-pElem :: Parser Elem
+pElem :: Parser G.Elem
 pElem = alternation <* many wsp  {- note: many wsp is from the erratum -}
 
   where
 
-    alternation :: Parser Elem
+    alternation :: Parser G.Elem
     alternation =
-            try (ElemAlternative <$> (concatenation <* many cwsp <* char '/' <* many cwsp) <*> alternation)
+            try (    G.ElemAlternative
+                 <$> (concatenation <* many cwsp <* char '/' <* many cwsp)
+                 <*> alternation
+                )
         <|> concatenation
 
-    concatenation :: Parser Elem
+    concatenation :: Parser G.Elem
     concatenation =
-            try (ElemConcat <$> (repetition <* some cwsp) <*> concatenation)
+            try (G.ElemConcat <$> (repetition <* some cwsp) <*> concatenation)
         <|> repetition
 
-    repetition :: Parser Elem
+    repetition :: Parser G.Elem
     repetition =
-            try (ElemRepeat <$> repeats <*> element)
+            try (G.ElemRepeat <$> repeats <*> element)
         <|> element
 
-    element :: Parser Elem
+    element :: Parser G.Elem
     element =
             terminal
         <|> group
         <|> option
 
-    group :: Parser Elem
-    group = bracketed '(' ')' (ElemParen <$> alternation)
+    group :: Parser G.Elem
+    group = bracketed '(' ')' (G.ElemParen <$> alternation)
 
-    option :: Parser Elem
-    option = bracketed '[' ']' (ElemOptional <$> alternation)
+    option :: Parser G.Elem
+    option = bracketed '[' ']' (G.ElemOptional <$> alternation)
 
-    terminal :: Parser Elem
+    terminal :: Parser G.Elem
     terminal =
-            (ElemChars <$> literalChars)
-        <|> (ElemString <$> literalString)
-        <|> (ElemNamedRule <$> ruleName)
+            (G.ElemChars <$> literalChars)
+        <|> (G.ElemString <$> literalString)
+        <|> (G.ElemNamedRule <$> ruleName)
 
     bracketed :: Char -> Char -> Parser a -> Parser a
     bracketed c1 c2 p =
@@ -168,28 +167,28 @@ wsp :: Parser ()
 wsp = (char ' ' <|> char '\t') *> pure ()
 
 
-literalChars :: Parser LiteralChars
+literalChars :: Parser G.LiteralChars
 literalChars = do
     _ <- char '%'
     b <- base
     cs <- case b of
-        Binary      -> chars binVal
-        Decimal     -> chars integer
-        Hexadecimal -> chars hexVal
-    pure (LiteralChars b cs)
+        G.Binary      -> chars binVal
+        G.Decimal     -> chars integer
+        G.Hexadecimal -> chars hexVal
+    pure (G.LiteralChars b cs)
 
   where
 
-    base :: Parser Base
+    base :: Parser G.Base
     base =
-            (char' 'b' *> pure Binary)
-        <|> (char' 'd' *> pure Decimal)
-        <|> (char' 'x' *> pure Hexadecimal)
+            (char' 'b' *> pure G.Binary)
+        <|> (char' 'd' *> pure G.Decimal)
+        <|> (char' 'x' *> pure G.Hexadecimal)
 
-    chars :: Parser Integer -> Parser Chars
+    chars :: Parser Integer -> Parser G.Chars
     chars p =
-            try (CharsRange <$> (p <* char '-') <*> p)
-        <|> ((CharsList . NE.fromList) <$> p `sepBy1` char '.')
+            try (G.CharsRange <$> (p <* char '-') <*> p)
+        <|> ((G.CharsList . NE.fromList) <$> p `sepBy1` char '.')
 
     binVal :: Parser Integer
     binVal = do
@@ -208,16 +207,16 @@ literalChars = do
     isUpperCaseHex c = isHexDigit c && (not $ isAsciiLower c)
 
 
-literalString :: Parser LiteralString
-literalString = LiteralString <$> caseSensitivity <*> quotedString
+literalString :: Parser G.LiteralString
+literalString = G.LiteralString <$> caseSensitivity <*> quotedString
 
   where
 
-    caseSensitivity :: Parser (Maybe CaseSensitivity)
+    caseSensitivity :: Parser (Maybe G.CaseSensitivity)
     caseSensitivity =
         optional
-        (    (string' "%i" *> pure CaseInsensitive)
-         <|> (string' "%s" *> pure CaseSensitive)
+        (    (string' "%i" *> pure G.CaseInsensitive)
+         <|> (string' "%s" *> pure G.CaseSensitive)
         )
 
     quotedString :: Parser Text
@@ -231,17 +230,17 @@ literalString = LiteralString <$> caseSensitivity <*> quotedString
             (c' == 32) || (c' == 33) || (c' >= 35 && c' <= 126)
 
 
-repeats :: Parser Repeats
+repeats :: Parser G.Repeats
 repeats =
-        try (RepeatsBetween <$> (integer <* char '*') <*> integer)
-    <|> try (RepeatsAtLeast <$> (integer <* char '*'))
-    <|> try (RepeatsAtMost  <$> (char '*' *> integer))
-    <|> try (RepeatsExactly <$> integer)
-    <|> try (char '*' *> pure RepeatsAny)
+        try (G.RepeatsBetween <$> (integer <* char '*') <*> integer)
+    <|> try (G.RepeatsAtLeast <$> (integer <* char '*'))
+    <|> try (G.RepeatsAtMost  <$> (char '*' *> integer))
+    <|> try (G.RepeatsExactly <$> integer)
+    <|> try (char '*' *> pure G.RepeatsAny)
 
 
-comment :: Parser Comment
-comment = char ';' *> (Comment <$> takeWhileP Nothing isVCharOrWS) <* nlChars
+comment :: Parser G.Comment
+comment = char ';' *> (G.Comment <$> takeWhileP Nothing isVCharOrWS) <* nlChars
   where
     isVCharOrWS :: Char -> Bool
     isVCharOrWS c =
