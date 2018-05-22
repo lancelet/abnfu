@@ -3,7 +3,8 @@ Module      : ABNFU.ABNF.Grammar
 Description : Haskell data types to describe an ABNF grammar.
 
 The types in this module describe the components of an ABNF grammar
-"as written", corresponding to RFC-5234 and RFC-7405.
+"as written", corresponding to RFC-5234 and RFC-7405. All parts of ABNF are
+represented except free-form prose.
 -}
 module ABNFU.ABNF.Grammar
     ( -- * Types
@@ -30,6 +31,7 @@ import           Data.Text            (Text)
 newtype ABNFGrammar = ABNFGrammar [Block]
 
 
+-- | ABNF block.
 data Block
     -- | Isolated comment on a line by itself.
     --
@@ -56,6 +58,7 @@ data Rule
     --   > oldrule =/ additional-alternatives
     | RuleIncremental !RuleName !Elem
     deriving (Eq, Show)
+
 
 -- | Expression language of rule elements.
 data Elem
@@ -99,15 +102,18 @@ data Elem
     | ElemOptional !Elem
     deriving (Eq, Show)
 
+
 -- | Name of a rule (RFC-5234 2.1).
 newtype RuleName
     = RuleName (CI Text)
     deriving (Eq, Show)
 
+
 -- | Numeric representation of terminal character(s) (RFC-5234 2.3, 3.4).
 data LiteralChars
     = LiteralChars !Base !Chars
     deriving (Eq, Show)
+
 
 -- | Specification of characters.
 data Chars
@@ -119,6 +125,7 @@ data Chars
     | CharsRange !Integer !Integer
     deriving (Eq, Show)
 
+
 -- | Base in which a numeric character is expressed (RFC-5234 2.3).
 data Base
     = Binary
@@ -126,16 +133,19 @@ data Base
     | Hexadecimal
     deriving (Eq, Show)
 
+
 -- | Literal string (RFC-5234 2.3).
 data LiteralString
     = LiteralString !(Maybe CaseSensitivity) !Text
     deriving (Eq, Show)
+
 
 -- | Case sensitivity of a literal string (RFC-7405).
 data CaseSensitivity
     = CaseSensitive
     | CaseInsensitive
     deriving (Eq, Show)
+
 
 -- | Specifies how repeats of an element occur (RFC-5234 3.6, 3.7 and 3.8).
 --

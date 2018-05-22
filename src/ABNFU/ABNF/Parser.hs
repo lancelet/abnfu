@@ -5,6 +5,8 @@ Description : Megaparsec parser for ABNF grammars.
 Parses ABNF grammars according to the rules of:
   - RFC-5234: Augmented BNF for Syntax Specifications: ABNF
   - RFC-7405: Case-Sensitive String Support in ABNF
+
+All parts of ABNF except free-form prose are understood.
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
@@ -55,6 +57,7 @@ import           Text.Megaparsec.Char      (char, char', satisfy, string,
 type Parser = Parsec Void Text
 
 
+-- | Parses a sequence of blocks forming an ABNF grammar.
 abnf :: Parser [Block]
 abnf = rights <$> many block
 
