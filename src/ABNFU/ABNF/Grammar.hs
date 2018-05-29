@@ -107,7 +107,7 @@ data Elem
 -- | Name of a rule (RFC-5234 2.1).
 newtype RuleName
     = RuleName (CI Text)
-    deriving (Eq, Show)
+    deriving (Eq, Show, Ord)
 
 
 -- | Numeric representation of terminal character(s) (RFC-5234 2.3, 3.4).
